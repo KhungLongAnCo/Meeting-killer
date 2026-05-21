@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Room {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sessions  Session[]
+}
+
+model Session {
+  id          String      @id @default(cuid())
+  title       String?
+  sourceLang  String      @default("vi")
+  targetLang  String      @default("en")
+  model       String      @default("gemini-flash-lite")
+  roomId      String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  room        Room?       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  entries     Entry[]
+}
+
+model Entry {
+  id           String   @id @default(cuid())
+  sessionId    String
+  originalText String
+  translatedText String
+  latencyMs    Int?
+  createdAt    DateTime @default(now())
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  setting   Setting?
+}
+
+model Setting {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  openaiApiKey   String?
+  deepgramApiKey String?
+  createdAt      DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
