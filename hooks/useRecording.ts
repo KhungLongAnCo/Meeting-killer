@@ -62,7 +62,6 @@ export function useRecording({
   const vadFrameRef = useRef<number | null>(null);
   const hadVoiceRef = useRef(false);
   const deepgramSocketRef = useRef<WebSocket | null>(null);
-  const deepgramBufferRef = useRef("");
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -459,59 +458,12 @@ export function useRecording({
     return true;
   }, [voiceEnabled, resetRealtimeSilenceTimer, finalizeRealtimeSentence, cleanupRealtimeConnection]);
 
-  const flushDeepgramBuffer = useCallback(() => {
-    const text = deepgramBufferRef.current.trim();
-    if (!text) return;
-    deepgramBufferRef.current = "";
-
-    // Keep original visible while translating
-    setInterimOriginalText(text);
-    setInterimTranslatedText("");
-    const currentSpeakerId = currentSpeakerRef.current;
-
-    fetch("/api/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        sourceLang: sourceLangRef.current,
-        targetLang: targetLangRef.current,
-        modelName: modelNameRef.current,
-        sessionId: sessionIdRef.current,
-        speakerId: currentSpeakerId,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.translatedText) {
-          setInterimOriginalText("");
-          setInterimTranslatedText("");
-          setEntries((prev) => [
-            ...prev,
-            {
-              id: Math.random().toString(36).substring(7),
-              originalText: text,
-              translatedText: data.translatedText,
-              translateMs: data.latencyMs,
-              speakerId: currentSpeakerId,
-            },
-          ]);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        setInterimOriginalText("");
-        setInterimTranslatedText("");
-      });
-  }, []);
-
   const startDeepgram = useCallback((stream: MediaStream) => {
     const languageMap: Record<string, string> = { en: "en", vi: "vi", ja: "ja" };
     const lang = languageMap[sourceLang] || "en";
-    deepgramBufferRef.current = "";
 
     const socket = new WebSocket(
-      `wss://api.deepgram.com/v1/listen?model=${deepgramModel}&language=${lang}&interim_results=true&smart_format=true&endpointing=300&utterance_end_ms=1200`,
+      `wss://api.deepgram.com/v1/listen?model=${deepgramModel}&language=${lang}&interim_results=true&smart_format=true&endpointing=300`,
       ["token", deepgramApiKey],
     );
     deepgramSocketRef.current = socket;
@@ -529,26 +481,52 @@ export function useRecording({
 
     socket.onmessage = (message) => {
       const received = JSON.parse(message.data);
-
-      // UtteranceEnd: speaker paused — flush buffer for translation
-      if (received.type === "UtteranceEnd") {
-        flushDeepgramBuffer();
-        return;
-      }
-
       if (received.channel?.alternatives?.[0]) {
         const transcript = received.channel.alternatives[0].transcript;
         if (transcript) {
           if (received.is_final) {
-            // Append finalized text to buffer, show it immediately
-            deepgramBufferRef.current += (deepgramBufferRef.current ? " " : "") + transcript.trim();
-            setInterimOriginalText(deepgramBufferRef.current);
+            // Show original immediately, translate in background
+            const text = transcript.trim();
+            setInterimOriginalText(text);
+            setInterimTranslatedText("");
+            const currentSpeakerId = currentSpeakerRef.current;
+
+            fetch("/api/translate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text,
+                sourceLang: sourceLangRef.current,
+                targetLang: targetLangRef.current,
+                modelName: modelNameRef.current,
+                sessionId: sessionIdRef.current,
+                speakerId: currentSpeakerId,
+              }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.translatedText) {
+                  setInterimOriginalText("");
+                  setInterimTranslatedText("");
+                  setEntries((prev) => [
+                    ...prev,
+                    {
+                      id: Math.random().toString(36).substring(7),
+                      originalText: text,
+                      translatedText: data.translatedText,
+                      translateMs: data.latencyMs,
+                      speakerId: currentSpeakerId,
+                    },
+                  ]);
+                }
+              })
+              .catch((err) => {
+                console.error(err);
+                setInterimOriginalText("");
+                setInterimTranslatedText("");
+              });
           } else {
-            // Show buffer + current interim preview
-            const preview = deepgramBufferRef.current
-              ? deepgramBufferRef.current + " " + transcript
-              : transcript;
-            setInterimOriginalText(preview);
+            setInterimOriginalText(transcript);
           }
         }
       }
@@ -656,7 +634,8 @@ export function useRecording({
     if (sttEngine === "openai-realtime") {
       cleanupRealtimeConnection();
     } else if (sttEngine === "deepgram") {
-      flushDeepgramBuffer();
+      setInterimOriginalText("");
+      setInterimTranslatedText("");
       if (mediaRecorderRef.current?.state === "recording") {
         mediaRecorderRef.current.stop();
       }
@@ -688,7 +667,7 @@ export function useRecording({
         vadFrameRef.current = null;
       }
     }
-  }, [sttEngine, cleanupRealtimeConnection, flushDeepgramBuffer]);
+  }, [sttEngine, cleanupRealtimeConnection]);
 
   const clearTranscript = useCallback(() => {
     setEntries([]);
