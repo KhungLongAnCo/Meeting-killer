@@ -640,7 +640,9 @@ export function useRecording({
         mediaRecorderRef.current.stop();
       }
       if (deepgramSocketRef.current) {
-        deepgramSocketRef.current.send(JSON.stringify({ type: "CloseStream" }));
+        if (deepgramSocketRef.current.readyState === WebSocket.OPEN) {
+          deepgramSocketRef.current.send(JSON.stringify({ type: "CloseStream" }));
+        }
         setTimeout(() => {
           deepgramSocketRef.current?.close();
           deepgramSocketRef.current = null;
