@@ -25,7 +25,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const [sourceLang, setSourceLang] = useState<Language>("en");
   const [targetLang, setTargetLang] = useState<Language>("vi");
   const [modelName, setModelName] = useState<TranslateModel>("gpt-4o-mini");
-  const [sttEngine, setSttEngine] = useState<STTEngine>("openai-realtime");
+  const [sttEngine, setSttEngine] = useState<STTEngine>("deepgram");
   const [audioSource, setAudioSource] = useState<AudioSource>("both");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [deepgramModel, setDeepgramModel] = useState<DeepgramModel>("nova-2");

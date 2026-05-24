@@ -32,23 +32,23 @@ const LANGUAGES: { value: Language; flag: string; label: string }[] = [
 ];
 
 const STT_ENGINES: { value: STTEngine; label: string }[] = [
-  { value: "openai-realtime", label: "OpenAI Realtime" },
   { value: "deepgram", label: "Deepgram Live" },
-  { value: "web-speech", label: "Web Speech" },
+  { value: "openai-realtime", label: "OpenAI Realtime" },
+  { value: "web-speech", label: "Web Speech (Free)" },
   { value: "whisper", label: "Whisper" },
 ];
 
 const TRANSLATE_MODELS: { value: TranslateModel; label: string }[] = [
-  { value: "gpt-4o-mini", label: "4o Mini" },
-  { value: "gpt-4o", label: "4o Best" },
-  { value: "gpt-4.1-mini", label: "4.1 Mini" },
-  { value: "gpt-4.1-nano", label: "4.1 Nano" },
+  { value: "gpt-4.1-nano", label: "4.1 Nano · $0.10/m" },
+  { value: "gpt-4o-mini", label: "4o Mini · $0.15/m" },
+  { value: "gpt-4.1-mini", label: "4.1 Mini · $0.40/m" },
+  { value: "gpt-4o", label: "4o · $2.50/m" },
 ];
 
 const DEEPGRAM_MODELS: { value: DeepgramModel; label: string }[] = [
-  { value: "nova-2", label: "Nova 2" },
-  { value: "nova-2-general", label: "Nova 2 General" },
-  { value: "nova-2-meeting", label: "Nova 2 Meeting" },
+  { value: "nova-2", label: "Nova 2 · $0.0059/m" },
+  { value: "nova-2-general", label: "Nova 2 General · $0.0059/m" },
+  { value: "nova-2-meeting", label: "Nova 2 Meeting · $0.0059/m" },
 ];
 
 function SelectField<T extends string>({
